@@ -1,0 +1,98 @@
+version: '3'
+
+services:
+  dsmrdb:
+    # When using Postgres, release 13.x is supported only
+    # due to the limited availability of client packages, especially for arm32v7
+    image: postgres:14-alpine
+    container_name: dsmrdb
+    restart: always
+    volumes:
+      - ./dsmrdb:/var/lib/postgresql/data
+    environment:
+      - TZ=Europe/Amsterdam
+      - PG_TZ=Europe/Amsterdam
+      - POSTGRES_USER=dsmrreader
+      - POSTGRES_PASSWORD=dsmrreader
+      - POSTGRES_DB=dsmrreader
+    healthcheck:
+      # postgres is the default user, please update with
+      # the DJANGO_DATABASE_USER used for dsmr-reader-docker
+      # default for DSMR Reader is dsmrreader
+      test: [ "CMD-SHELL", "pg_isready -U dsmrreader" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  dsmr:
+    image: xirixiz/dsmr-reader-docker:latest
+    depends_on:
+      dsmrdb:
+        condition: service_healthy
+    container_name: dsmr
+    links:
+      - dsmrdb
+    cap_add:
+      - NET_ADMIN
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./dsmr_backups:/app/backups
+    environment:
+      - TZ=Europe/Amsterdam
+      - DJANGO_TIME_ZONE=Europe/Amsterdam
+      - VIRTUAL_HOST=localhost
+    ports:
+      - 7777:80
+      - 7779:443
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"
+    # healthcheck:
+    #   disable: true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-Lsf",
+          "http://127.0.0.1/about",
+          "-o",
+          "/dev/null",
+          "-w",
+          "HTTP_%{http_code}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    # For DHCP it is recommended to remove these ports and instead add: network_mode: "host"
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "67:67/udp" # Only required if you are using Pi-hole as your DHCP server
+      - "80:80/tcp"
+    environment:
+      TZ: 'Europe/Amsterdam'
+      WEBPASSWORD: 'Dotnet#156230'
+    # Volumes store your data between container upgrades
+    volumes:
+      - './etc-pihole:/etc/pihole'
+      - './etc-dnsmasq.d:/etc/dnsmasq.d'    
+    #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+    cap_add:
+      - NET_ADMIN # Recommended but not required (DHCP needs NET_ADMIN)      
+    restart: unless-stopped
+  homebridge:
+    image: oznu/homebridge:ubuntu
+    container_name: homebridge
+    restart: always
+    network_mode: host
+    environment:
+      - HOMEBRIDGE_CONFIG_UI_PORT=8581
+    volumes:
+      - ./homebridge:/homebridge
+volumes:
+  dsmrdb: null
+  dsmrdb_backups: null
