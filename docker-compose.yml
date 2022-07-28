@@ -93,6 +93,8 @@ services:
       - HOMEBRIDGE_CONFIG_UI_PORT=8581
     volumes:
       - ./homebridge:/homebridge
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"
 volumes:
   dsmrdb: null
   dsmrdb_backups: null
