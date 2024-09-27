@@ -95,6 +95,21 @@ services:
       - ./homebridge:/homebridge
     devices:
       - "/dev/ttyUSB0:/dev/ttyUSB0"
+  tailscale:
+    container_name: tailscale
+    hostname: tailscale-pi
+    image: tailscale/tailscale:stable
+    environment:
+      TS_AUTH_KEY: tskey-auth-khS4v65CNTRL-7xAYqmaYiMeXhsBPhDU8KePoyqnpUkzUb
+    volumes:
+      - ./tailscale:/var/lib # State data will be stored in this directory
+      - /dev/net/tun:/dev/net/tun # Required for tailscale to work
+    cap_add: # Required for tailscale to work
+      - net_admin
+      - sys_module
+    command: tailscaled
+    privileged: true
+    restart: unless-stopped
 volumes:
   dsmrdb: null
   dsmrdb_backups: null
