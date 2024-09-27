@@ -85,7 +85,7 @@ services:
       - NET_ADMIN # Recommended but not required (DHCP needs NET_ADMIN)      
     restart: unless-stopped
   homebridge:
-    image: oznu/homebridge:ubuntu
+    image: homebridge/homebridge
     container_name: homebridge
     restart: always
     network_mode: host
